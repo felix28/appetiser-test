@@ -1,0 +1,80 @@
+version: '3.7'
+services:
+
+  #PHP Service
+  appetiser-calendar-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: digitalocean.com/php
+    container_name: appetiser-calendar-app
+    restart: unless-stopped
+    tty: true
+    ports:
+      - 7016:80
+    environment:
+      SERVICE_NAME: appetiser-calendar-app
+      SERVICE_TAGS: dev
+    working_dir: /var/www
+    volumes:
+      - ./:/var/www
+      - ./php/local.ini:/usr/local/etc/php/conf.d/local.ini
+    networks:
+      - appetiser-calendar-app-network
+
+  #Nginx Service
+  appetiser-calendar-nginx:
+    image: nginx:alpine
+    container_name: appetiser-calendar-nginx
+    restart: unless-stopped
+    tty: true
+    ports:
+      - 7017:80
+    volumes:
+      - ./:/var/www
+      - ./nginx/conf.d/:/etc/nginx/conf.d/
+    networks:
+      - appetiser-calendar-app-network
+
+  #MySQL Service
+  appetiser-calendar-mysql:
+    image: mysql:5.7.22
+    container_name: appetiser-calendar-mysql
+    restart: unless-stopped
+    tty: true
+    ports:
+      - 7018:3306
+    environment:
+      MYSQL_DATABASE: appetiser
+      MYSQL_ROOT_PASSWORD: rootpassword
+      SERVICE_TAGS: dev
+      SERVICE_NAME: appetiser-calendar-mysql
+    volumes:
+      - dbdata:/var/lib/mysql/
+      - ./mysql/my.cnf:/etc/mysql/my.cnf
+    networks:
+      - appetiser-calendar-app-network
+
+  appetiser-calendar-phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    container_name: appetiser-calendar-phpmyadmin
+    restart: unless-stopped
+    links: 
+      - appetiser-calendar-mysql:db
+    ports:
+      - 7019:80
+    environment:
+      MYSQL_USER: user
+      MYSQL_PASSWORD: test
+      MYSQL_ROOT_PASSWORD: rootpassword
+    networks:
+      - appetiser-calendar-app-network
+
+#Docker Networks
+networks:
+  appetiser-calendar-app-network:
+    driver: bridge
+#Volumes
+volumes:
+  dbdata:
+    driver: local
